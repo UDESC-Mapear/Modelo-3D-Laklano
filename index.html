@@ -1,26 +1,97 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8" />
+    <!-- Important for mobile: proper viewport and avoid automatic zooming / scaling -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
 
+    <style>
+      /* Ensure scene fills screen when embedded */
+      body, html { margin: 0; height: 100%; }
+      a-scene { width: 100%; height: 100vh; display: block; }
+      /* Simple instruction overlay */
+      #hint {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 14px;
+        padding: 8px 12px;
+        background: rgba(0,0,0,0.55);
+        color: #fff;
+        border-radius: 6px;
+        font-family: sans-serif;
+        font-size: 14px;
+        z-index: 10;
+        pointer-events: none;
+      }
+    </style>
   </head>
+
   <body>
-    <a-scene embedded
-      arjs="patternRatio:0.80">
+    <div id="hint">Point camera at the marker, hold steady and ensure good lighting</div>
+
+    <!-- We'll set the arjs parameters from JS (so we can adapt to device DPR) -->
+    <a-scene embedded vr-mode-ui="enabled: false" id="scene">
       <a-assets>
         <a-asset-item id="modelo" src="modelov2b.glb"></a-asset-item>
       </a-assets>
 
-      <a-marker 
-        type="pattern" 
-        url="marker.patt">
+      <!-- marker: keep type pattern and your marker.patt -->
+      <a-marker
+        type="pattern"
+        url="marker.patt"
+        /* smoothing can reduce jitter on some AR.js builds */
+        smooth="true"
+        smoothCount="10"
+        smoothTolerance="0.01"
+        smoothThreshold="5">
         <a-entity gltf-model="#modelo"
-          scale="0.1 0.1 0.1"
-          rotation="-90 0 0">
-          </a-entity>
+                  scale="0.1 0.1 0.1"
+                  rotation="-90 0 0">
+        </a-entity>
       </a-marker>
+
       <a-entity camera></a-entity>
     </a-scene>
+
+    <script>
+      // Configure AR.js dynamically to match the device.
+      // Smaller canvas sizes reduce CPU load (improves fps and detection on low-end phones).
+      (function configureAR() {
+        var scene = document.getElementById('scene');
+
+        // device pixel ratio — higher DPR needs larger canvas for similar detection quality
+        var dpr = window.devicePixelRatio || 1;
+        // Limit to reasonable bounds
+        var maxCanvasWidth = 1280;
+        var maxCanvasHeight = 720;
+
+        var targetWidth = Math.min(Math.floor(window.innerWidth * dpr), maxCanvasWidth);
+        var targetHeight = Math.min(Math.floor(window.innerHeight * dpr), maxCanvasHeight);
+
+        // You can adjust patternRatio (how much of the marker area is treated as pattern).
+        // Increasing it (closer to 1) sometimes helps with noisy markers; you already set 0.8.
+        var arjsOpts = [
+          'sourceType: webcam',
+          'debugUIEnabled: false',
+          'patternRatio: 0.80',
+          'maxDetectionRate: 30',
+          'canvasWidth: ' + targetWidth,
+          'canvasHeight: ' + targetHeight
+        ].join('; ');
+
+        scene.setAttribute('arjs', arjsOpts);
+
+        // Helpful: if the page is opened on iOS Safari, ensure video uses playsinline (AR.js usually sets it).
+        // Also keep the hint for a few seconds then hide it.
+        setTimeout(function () {
+          var hint = document.getElementById('hint');
+          if (hint) hint.style.display = 'none';
+        }, 5000);
+      })();
+    </script>
   </body>
 </html>
